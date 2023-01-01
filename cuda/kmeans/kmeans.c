@@ -125,7 +125,7 @@ int setup(int argc, char **argv) {
 		float	rmse;
 		
 		int		isOutput = 0;
-		//float	cluster_timing, io_timing;		
+		float	cluster_timing, io_timing;	
 
 		/* obtain command line arguments and change appropriate options */
 		while ( (opt=getopt(argc,argv,"i:t:m:n:l:bro"))!= EOF) {
@@ -233,8 +233,9 @@ int setup(int argc, char **argv) {
 
 	/* ======================= core of the clustering ===================*/
 
-    //cluster_timing = omp_get_wtime();		/* Total clustering time */
+    cluster_timing = omp_get_wtime();		/* Total clustering time */
 	cluster_centres = NULL;
+
     index = cluster(npoints,				/* number of data points */
 					nfeatures,				/* number of features for each point */
 					features,				/* array: [npoints][nfeatures] */
@@ -247,9 +248,12 @@ int setup(int argc, char **argv) {
 					isRMSE,					/* calculate RMSE */
 					nloops);				/* number of iteration for each number of clusters */		
     
-	//cluster_timing = omp_get_wtime() - cluster_timing;
+	cluster_timing = omp_get_wtime() - cluster_timing;
 
 
+	printf("Number of Iteration: %d\n", nloops);
+	//printf("Time for I/O: %.5fsec\n", io_timing);
+	printf("Time for Entire Clustering: %.5fsec\n", cluster_timing);
 	/* =============== Command Line Output =============== */
 
 	/* cluster center coordinates
@@ -267,9 +271,6 @@ int setup(int argc, char **argv) {
 	
 	len = (float) ((max_nclusters - min_nclusters + 1)*nloops);
 
-	printf("Number of Iteration: %d\n", nloops);
-	//printf("Time for I/O: %.5fsec\n", io_timing);
-	//printf("Time for Entire Clustering: %.5fsec\n", cluster_timing);
 	
 	if(min_nclusters != max_nclusters){
 		if(nloops != 1){									//range of k, multiple iteration

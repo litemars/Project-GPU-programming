@@ -98,6 +98,7 @@ int cluster(int      npoints,				/* number of data points */
     int    *membership;						/* which cluster a data point belongs to */
     float **tmp_cluster_centres;			/* hold coordinates of cluster centers */
 	int		i;
+	float allocate_time, cluster_time;
 
 	/* allocate memory for membership */
     membership = (int*) malloc(npoints * sizeof(int));
@@ -107,12 +108,16 @@ int cluster(int      npoints,				/* number of data points */
 	{
 		if (nclusters > npoints) break;	/* cannot have more clusters than points */
 
+		allocate_time = omp_get_wtime();
 		/* allocate device memory, invert data array (@ kmeans_cuda.cu) */
 		allocateMemory(npoints, nfeatures, nclusters, features);
+
+		printf("Time for Allocate: %.5fsec\n", omp_get_wtime()-allocate_time);
 
 		/* iterate nloops times for each number of clusters */
 		for(i = 0; i < nloops; i++)
 		{
+		cluster_time = omp_get_wtime();
 			/* initialize initial cluster centers, CUDA calls (@ kmeans_cuda.cu) */
 			tmp_cluster_centres = kmeans_clustering(features,
 													nfeatures,
@@ -120,6 +125,7 @@ int cluster(int      npoints,				/* number of data points */
 													nclusters,
 													threshold,
 													membership);
+		printf("Time for kmeans: %.5fsec\n", omp_get_wtime()-cluster_time);
 
 			if (*cluster_centres) {
 				free((*cluster_centres)[0]);
