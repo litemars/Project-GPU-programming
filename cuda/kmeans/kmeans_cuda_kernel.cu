@@ -47,6 +47,20 @@ __global__ void invert_mapping(float *input,			/* original */
 }
 /* ----------------- invert_mapping() end --------------------- */
 
+__global__ void invert_mapping_v4(float *input,          /* original */
+                               float *output,         /* inverted */
+                               int npoints,           /* npoints */
+                               int nfeatures)         /* nfeatures */
+{
+    int point_id = threadIdx.x + blockDim.x*blockIdx.x;  /* id of thread */
+    int feature_id = threadIdx.y;                        /* id of feature */
+    
+    if(point_id < npoints && feature_id < nfeatures){
+        output[point_id + npoints*feature_id] = input[point_id*nfeatures + feature_id];
+    }
+    return;
+}
+
 /* to turn on the GPU delta and center reduction */
 //#define GPU_DELTA_REDUCTION
 //#define GPU_NEW_CENTER_REDUCTION
