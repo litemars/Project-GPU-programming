@@ -37,21 +37,25 @@ endif
 ifeq ($(VERSION),2)
 kmeans_cuda.o: kmeans_cuda_v2.cu 
 	$(NVCC) $(NVCC_FLAGS) -c kmeans_cuda_v2.cu -o kmeans_cuda.o
+	$(info using verision 2: streams)
 endif
 
 ifeq ($(VERSION),3)
 kmeans_cuda.o: kmeans_cuda_v4.cu 
 	$(NVCC) $(NVCC_FLAGS) -c kmeans_cuda_v4.cu -o kmeans_cuda.o
+	$(info using verision 3: memory transfers )
 endif
 
 ifeq ($(VERSION),4)
 kmeans_cuda.o: kmeans_cuda_v4.cu 
 	$(NVCC) $(NVCC_FLAGS) -c kmeans_cuda_v4.cu -o kmeans_cuda.o
+	$(info using verision 4: invert mapping )
 endif
 
 ifeq ($(VERSION),5)
-kmeans_cuda.o: kmeans_cuda_v5.cu 
+kmeans_cuda.o: kmeans_cuda_v5.cu
 	$(NVCC) $(NVCC_FLAGS) -c kmeans_cuda_v5.cu -o kmeans_cuda.o
+	$(info using verision 5: all )
 endif
 
 clean:
