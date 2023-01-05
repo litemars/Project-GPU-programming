@@ -72,8 +72,8 @@ void allocateMemory(int npoints, int nfeatures, int nclusters, float **features)
 
 	dim3 block(num_threads, nfeatures);
 		
-	/* invert the data array (kernel execution) */	
-	invert_mapping<<<num_blocks,block>>>(feature_flipped_d,feature_d,npoints,nfeatures);
+	/* invert the data array (kernel execution) */
+	invert_mapping_v4<<<num_blocks,block>>>(feature_flipped_d,feature_d,npoints,nfeatures);
 		
 	/* allocate memory for membership_d[] and clusters_d[][] (device) */
 	cudaMalloc((void**) &membership_d, npoints*sizeof(int));

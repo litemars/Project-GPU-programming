@@ -4,7 +4,7 @@ include ../../common/make.config
 CC = gcc
 CC_FLAGS = -g -fopenmp -O2 
 
-VERSION = 2
+VERSION = 5
 # CUDA compiler
 NVCC = $(CUDA_DIR)/bin/nvcc
 NVCC_FLAGS = -I$(CUDA_DIR)/include --default-stream per-thread
@@ -47,6 +47,11 @@ endif
 ifeq ($(VERSION),4)
 kmeans_cuda.o: kmeans_cuda_v4.cu 
 	$(NVCC) $(NVCC_FLAGS) -c kmeans_cuda_v4.cu -o kmeans_cuda.o
+endif
+
+ifeq ($(VERSION),5)
+kmeans_cuda.o: kmeans_cuda_v5.cu 
+	$(NVCC) $(NVCC_FLAGS) -c kmeans_cuda_v5.cu -o kmeans_cuda.o
 endif
 
 clean:
