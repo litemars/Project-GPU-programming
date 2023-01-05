@@ -4,6 +4,7 @@ include ../../common/make.config
 CC = gcc
 CC_FLAGS = -g -fopenmp -O2 
 
+VERSION = 2
 # CUDA compiler
 NVCC = $(CUDA_DIR)/bin/nvcc
 NVCC_FLAGS = -I$(CUDA_DIR)/include --default-stream per-thread
@@ -27,8 +28,26 @@ kmeans: cluster.o getopt.o kmeans.o kmeans_clustering.o kmeans_cuda.o rmse.o
 %.o: %.[ch]
 	$(CC) $(CC_FLAGS) $< -c
 
+ifeq ($(VERSION),1)
 kmeans_cuda.o: kmeans_cuda.cu 
 	$(NVCC) $(NVCC_FLAGS) -c kmeans_cuda.cu
+endif
+
+# different improvments
+ifeq ($(VERSION),2)
+kmeans_cuda.o: kmeans_cuda_v2.cu 
+	$(NVCC) $(NVCC_FLAGS) -c kmeans_cuda_v2.cu
+endif
+
+ifeq ($(VERSION),3)
+kmeans_cuda.o: kmeans_cuda_v4.cu 
+	$(NVCC) $(NVCC_FLAGS) -c kmeans_cuda_v4.cu
+endif
+
+ifeq ($(VERSION),4)
+kmeans_cuda.o: kmeans_cuda_v4.cu 
+	$(NVCC) $(NVCC_FLAGS) -c kmeans_cuda_v4.cu
+endif
 
 clean:
 	rm -f *.o *~ kmeans kmeans_cuda.linkinfo
