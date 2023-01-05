@@ -36,17 +36,17 @@ endif
 # different improvments
 ifeq ($(VERSION),2)
 kmeans_cuda.o: kmeans_cuda_v2.cu 
-	$(NVCC) $(NVCC_FLAGS) -c kmeans_cuda_v2.cu
+	$(NVCC) $(NVCC_FLAGS) -c kmeans_cuda_v2.cu -o kmeans_cuda.o
 endif
 
 ifeq ($(VERSION),3)
 kmeans_cuda.o: kmeans_cuda_v4.cu 
-	$(NVCC) $(NVCC_FLAGS) -c kmeans_cuda_v4.cu
+	$(NVCC) $(NVCC_FLAGS) -c kmeans_cuda_v4.cu -o kmeans_cuda.o
 endif
 
 ifeq ($(VERSION),4)
 kmeans_cuda.o: kmeans_cuda_v4.cu 
-	$(NVCC) $(NVCC_FLAGS) -c kmeans_cuda_v4.cu
+	$(NVCC) $(NVCC_FLAGS) -c kmeans_cuda_v4.cu -o kmeans_cuda.o
 endif
 
 clean:
