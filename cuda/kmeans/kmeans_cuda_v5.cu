@@ -48,6 +48,7 @@ int    *block_deltas_d;												/* per block calculation of deltas */
 extern "C"
 void allocateMemory(int npoints, int nfeatures, int nclusters, float **features)
 {	
+
 	num_blocks = npoints / num_threads;
 	if (npoints % num_threads > 0)		/* defeat truncation */
 		num_blocks++;
@@ -60,13 +61,13 @@ void allocateMemory(int npoints, int nfeatures, int nclusters, float **features)
 
 	/* allocate memory for memory_new[] and initialize to -1 (host) */
     cudaMallocHost(&membership_new, npoints * sizeof(int));
-	cudaMalloc((void**) &membership_d, npoints*sizeof(int));
-    cudaMemset(membership_d, -1,  npoints * sizeof(int));
+    cudaMemset(membership_new, -1,  npoints * sizeof(int));
 
+    cudaMalloc((void**) &membership_d, npoints*sizeof(int));
 
 	/* allocate memory for block_new_centers[] (host) */
-	block_new_centers = (float *) malloc(nclusters*nfeatures*sizeof(float));
-	
+	//block_new_centers = (float *) malloc(nclusters*nfeatures*sizeof(float));
+	cudaMallocHost(&block_new_centers, nclusters*nfeatures*sizeof(float));
 	/* allocate memory for feature_flipped_d[][], feature_d[][] (device) */
 	cudaMalloc((void**) &feature_flipped_d, npoints*nfeatures*sizeof(float));
 	cudaMalloc((void**) &feature_d, npoints*nfeatures*sizeof(float));
@@ -87,7 +88,7 @@ void allocateMemory(int npoints, int nfeatures, int nclusters, float **features)
 	
 		
 	/* allocate memory for membership_d[] and clusters_d[][] (device) */
-	cudaMalloc((void**) &membership_d, npoints*sizeof(int));
+	//cudaMalloc((void**) &membership_d, npoints*sizeof(int));
 	cudaMalloc((void**) &clusters_d, nclusters*nfeatures*sizeof(float));
 
 	
@@ -115,7 +116,7 @@ extern "C"
 void deallocateMemory()
 {
 	cudaFreeHost(membership_new);
-	free(block_new_centers);
+	cudaFreeHost(block_new_centers);
 	cudaFree(feature_d);
 	cudaFree(feature_flipped_d);
 	cudaFree(membership_d);

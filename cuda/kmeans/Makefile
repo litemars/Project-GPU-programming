@@ -31,6 +31,7 @@ kmeans: cluster.o getopt.o kmeans.o kmeans_clustering.o kmeans_cuda.o rmse.o
 ifeq ($(VERSION),1)
 kmeans_cuda.o: kmeans_cuda.cu 
 	$(NVCC) $(NVCC_FLAGS) -c kmeans_cuda.cu
+	$(info using verision 1: no optimization)
 endif
 
 # different improvments
