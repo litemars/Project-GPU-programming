@@ -79,7 +79,7 @@ void allocateMemory(int npoints, int nfeatures, int nclusters, float **features)
 		cudaStreamCreate(&streams[i]);
 
     	size_t offset = streamSize * i;
-		cudaMemcpyAsync(&feature_flipped_d[offset], features[0], streamBytes, cudaMemcpyHostToDevice, streams[i]);
+		cudaMemcpyAsync(&feature_flipped_d[offset], features[offset], streamBytes, cudaMemcpyHostToDevice, streams[i]);
 			
 		/* invert the data array (kernel execution) */	
 		invert_mapping<<<num_blocks,num_threads,0,streams[i]>>>(&feature_flipped_d[offset],feature_d,npoints / STREAM_COUNT,nfeatures);
