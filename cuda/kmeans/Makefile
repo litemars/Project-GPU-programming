@@ -23,7 +23,7 @@ endif
 
 
 kmeans: cluster.o getopt.o kmeans.o kmeans_clustering.o kmeans_cuda.o rmse.o
-	$(CC) $(CC_FLAGS) cluster.o getopt.o kmeans.o kmeans_clustering.o kmeans_cuda.o rmse.o -o kmeans -L$(CUDA_LIB_DIR) -lcuda -lcudart -lm
+	$(CC) $(CC_FLAGS) cluster.o getopt.o kmeans.o kmeans_clustering.o kmeans_cuda.o rmse.o -o kmeans -L$(CUDA_LIB_DIR) -lcuda -lcudart -lm -o runV$(VERSION)
 
 %.o: %.[ch]
 	$(CC) $(CC_FLAGS) $< -c
@@ -56,7 +56,13 @@ endif
 ifeq ($(VERSION),5)
 kmeans_cuda.o: kmeans_cuda_v5.cu
 	$(NVCC) $(NVCC_FLAGS) -c kmeans_cuda_v5.cu -o kmeans_cuda.o
-	$(info using verision 5: all )
+	$(info using verision 5: unified memory)
+endif
+
+ifeq ($(VERSION),99)
+kmeans_cuda.o: kmeans_cuda_v5.cu
+	$(NVCC) $(NVCC_FLAGS) -c kmeans_cuda_v5.cu -o kmeans_cuda.o
+	$(info using verision 99: all)
 endif
 
 clean:
