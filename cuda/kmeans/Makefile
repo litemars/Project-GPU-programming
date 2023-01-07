@@ -31,38 +31,38 @@ kmeans: cluster.o getopt.o kmeans.o kmeans_clustering.o kmeans_cuda.o rmse.o
 ifeq ($(VERSION),1)
 kmeans_cuda.o: kmeans_cuda.cu 
 	$(NVCC) $(NVCC_FLAGS) -c kmeans_cuda.cu
-	$(info using verision 1: no optimization)
+	$(info using version 1: no optimization)
 endif
 
 # different improvments
 ifeq ($(VERSION),2)
 kmeans_cuda.o: kmeans_cuda_v2.cu 
 	$(NVCC) $(NVCC_FLAGS) -c kmeans_cuda_v2.cu -o kmeans_cuda.o
-	$(info using verision 2: streams)
+	$(info using version 2: streams)
 endif
 
 ifeq ($(VERSION),3)
-kmeans_cuda.o: kmeans_cuda_v4.cu 
-	$(NVCC) $(NVCC_FLAGS) -c kmeans_cuda_v4.cu -o kmeans_cuda.o
-	$(info using verision 3: memory transfers )
+kmeans_cuda.o: kmeans_cuda_v3.cu 
+	$(NVCC) $(NVCC_FLAGS) -c kmeans_cuda_v3.cu -o kmeans_cuda.o
+	$(info using version 3: memory transfers )
 endif
 
 ifeq ($(VERSION),4)
 kmeans_cuda.o: kmeans_cuda_v4.cu 
 	$(NVCC) $(NVCC_FLAGS) -c kmeans_cuda_v4.cu -o kmeans_cuda.o
-	$(info using verision 4: invert mapping )
+	$(info using version 4: invert mapping )
 endif
 
 ifeq ($(VERSION),5)
 kmeans_cuda.o: kmeans_cuda_v5.cu
 	$(NVCC) $(NVCC_FLAGS) -c kmeans_cuda_v5.cu -o kmeans_cuda.o
-	$(info using verision 5: unified memory)
+	$(info using version 5: unified memory)
 endif
 
 ifeq ($(VERSION),99)
 kmeans_cuda.o: kmeans_cuda_v5.cu
 	$(NVCC) $(NVCC_FLAGS) -c kmeans_cuda_v5.cu -o kmeans_cuda.o
-	$(info using verision 99: all)
+	$(info using version 99: all)
 endif
 
 clean:
