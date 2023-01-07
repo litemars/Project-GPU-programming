@@ -192,6 +192,8 @@ kmeansCuda(float  **feature,				/* in: [npoints][nfeatures] */
     dim3  grid( num_blocks_perdim, num_blocks_perdim );
     dim3  threads( num_threads_perdim*num_threads_perdim );
     
+	cudaMemAdvise(membership_d, npoints*sizeof(int),cudaMemAdviseSetPreferredLocation, -1);
+    cudaMemPrefetchAsync(membership_d, npoints*sizeof(int), -1);
 	/* execute the kernel */
     kmeansPoint<<< grid, threads >>>( feature_d,
                                       nfeatures,
