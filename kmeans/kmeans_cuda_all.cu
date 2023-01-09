@@ -31,7 +31,7 @@ unsigned int num_threads = 27;	/* number of threads */
 unsigned int num_blocks = num_blocks_perdim*num_blocks_perdim;		/* number of blocks */
 
 /* _d denotes it resides on the device */
-int    *membership_new;												/* newly assignment membership */
+//int    *membership_new;												/* newly assignment membership */
 float  *feature_d;													/* inverted data array */
 float  *feature_flipped_d;											/* original (not inverted) data array */
 int    *membership_d;												/* membership on the device */
@@ -62,12 +62,10 @@ void allocateMemory(int npoints, int nfeatures, int nclusters, float **features)
 	// Experiment: Pinned memory optimizations 
 	// Profiling showed this variable is small enough to be pinned
 	// Pinning this improves copy performance
-	cudaMallocHost(&membership_new, npoints * sizeof(int));
-
-	// Optimized, instead of setting data on cpu side with a for loop
-	cudaMalloc((void**) &membership_d, npoints*sizeof(int));
-	// Removes a large for loop 
-	cudaMemset(membership_d, -1,  npoints * sizeof(int));
+	cudaMallocManaged( &membership_d,npoints*sizeof(int));
+	for(int i=0;i<npoints;i++) {
+		membership_d[i] = -1;
+	}
 	
 
 	/* allocate memory for block_new_centers[] (host) */
@@ -118,7 +116,6 @@ void allocateMemory(int npoints, int nfeatures, int nclusters, float **features)
 extern "C"
 void deallocateMemory()
 {
-	cudaFreeHost(membership_new);
 	free(block_new_centers);
 	cudaFree(feature_d);
 	cudaFree(feature_flipped_d);
@@ -225,7 +222,7 @@ kmeansCuda(float  **feature,				/* in: [npoints][nfeatures] */
 	cudaThreadSynchronize();
 
 	/* copy back membership (device to host) */
-	cudaMemcpy(membership_new, membership_d, npoints*sizeof(int), cudaMemcpyDeviceToHost);	
+	//cudaMemcpy(membership_new, membership_d, npoints*sizeof(int), cudaMemcpyDeviceToHost);	
 
 #ifdef BLOCK_CENTER_REDUCE
     /*** Copy back arrays of per block sums ***/
@@ -254,14 +251,14 @@ kmeansCuda(float  **feature,				/* in: [npoints][nfeatures] */
 	delta = 0;
 	for (i = 0; i < npoints; i++)
 	{		
-		int cluster_id = membership_new[i];
+		int cluster_id = membership_d[i];
 		new_centers_len[cluster_id]++;
-		if (membership_new[i] != membership[i])
+		if (membership_d[i] != membership[i])
 		{
 #ifdef CPU_DELTA_REDUCE
 			delta++;
 #endif
-			membership[i] = membership_new[i];
+			membership[i] = membership_d[i];
 		}
 #ifdef CPU_CENTER_REDUCE
 		for (j = 0; j < nfeatures; j++)
