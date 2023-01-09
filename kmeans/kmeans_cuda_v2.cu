@@ -11,6 +11,7 @@
 #define THREADS_PER_DIM 16
 #define BLOCKS_PER_DIM 16
 #define THREADS_PER_BLOCK THREADS_PER_DIM*THREADS_PER_DIM
+#define STREAM_COUNT 4
 
 #include "kmeans_cuda_kernel.cu"
 
@@ -27,8 +28,9 @@ int setup(int argc, char** argv);									/* function prototype */
 // GLOBAL!!!!!
 unsigned int num_threads_perdim = THREADS_PER_DIM;					/* sqrt(256) -- see references for this choice */
 unsigned int num_blocks_perdim = BLOCKS_PER_DIM;					/* temporary */
-unsigned int num_threads = 27;	/* number of threads */
+unsigned int num_threads = num_threads_perdim*num_threads_perdim;	/* number of threads */
 unsigned int num_blocks = num_blocks_perdim*num_blocks_perdim;		/* number of blocks */
+cudaStream_t streams[STREAM_COUNT];
 
 /* _d denotes it resides on the device */
 int    *membership_new;												/* newly assignment membership */
@@ -67,14 +69,26 @@ void allocateMemory(int npoints, int nfeatures, int nclusters, float **features)
 	
 	/* allocate memory for feature_flipped_d[][], feature_d[][] (device) */
 	cudaMalloc((void**) &feature_flipped_d, npoints*nfeatures*sizeof(float));
-	cudaMemcpy(feature_flipped_d, features[0], npoints*nfeatures*sizeof(float), cudaMemcpyHostToDevice);
 	cudaMalloc((void**) &feature_d, npoints*nfeatures*sizeof(float));
 
-	dim3 grid(num_blocks);
-	dim3 block(num_threads,nfeatures);
-		
-	/* invert the data array (kernel execution) */
-	invert_mapping_v4<<<grid,block>>>(feature_flipped_d,feature_d,npoints,nfeatures);
+	// Experiment: Stream optimizations 
+	// Divide the data set in STREAM_COUNT parts, move and run in seperate streams
+	size_t streamSize = npoints*nfeatures / STREAM_COUNT;
+	size_t streamBytes = streamSize * sizeof(float);
+
+	for (size_t i = 0; i < STREAM_COUNT; i++)
+	{
+		cudaStreamCreate(&streams[i]);
+
+		// Offset is used to determine where to start data move for each stream
+    	size_t offset = streamSize * i;
+		// DtoH memory copy. Features is a 2D array which we are only interested in the first row.
+		cudaMemcpyAsync(&feature_flipped_d[offset], &features[0][offset], streamBytes, cudaMemcpyHostToDevice, streams[i]);
+			
+		/* invert the data array (kernel execution) */	
+		invert_mapping<<<num_blocks,num_threads,0,streams[i]>>>(&feature_flipped_d[offset],feature_d,npoints / STREAM_COUNT,nfeatures);
+	}
+	
 		
 	/* allocate memory for membership_d[] and clusters_d[][] (device) */
 	cudaMalloc((void**) &membership_d, npoints*sizeof(int));
@@ -111,6 +125,12 @@ void deallocateMemory()
 	cudaFree(membership_d);
 
 	cudaFree(clusters_d);
+
+	for (size_t i = 0; i < STREAM_COUNT; i++)
+	{
+		cudaStreamDestroy(streams[i]);
+	}
+	
 #ifdef BLOCK_CENTER_REDUCE
     cudaFree(block_clusters_d);
 #endif
@@ -156,6 +176,7 @@ kmeansCuda(float  **feature,				/* in: [npoints][nfeatures] */
 
 
 	cudaSetDevice(1);
+	cudaDeviceSynchronize();
 
 	/* copy membership (host to device) */
 	cudaMemcpy(membership_d, membership_new, npoints*sizeof(int), cudaMemcpyHostToDevice);

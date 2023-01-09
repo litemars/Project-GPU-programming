@@ -49,6 +49,20 @@ __global__ void invert_mapping(float *input,			/* original */
 
 
 /* ----------------- invert_mapping_v4() --------------------- */
+/* 
+This is the unrolled version of invert_mapping.
+inverts data array from row-major to column-major.
+
+   [p0,dim0][p0,dim1][p0,dim2] ... 
+   [p1,dim0][p1,dim1][p1,dim2] ... 
+   [p2,dim0][p2,dim1][p2,dim2] ... 
+										to
+   [dim0,p0][dim0,p1][dim0,p2] ...
+   [dim1,p0][dim1,p1][dim1,p2] ...
+   [dim2,p0][dim2,p1][dim2,p2] ...
+
+   
+*/
 __global__ void invert_mapping_v4(float *input,          /* original */
                                float *output,         /* inverted */
                                int npoints,           /* npoints */
@@ -57,6 +71,7 @@ __global__ void invert_mapping_v4(float *input,          /* original */
     int point_id = threadIdx.x + blockDim.x*blockIdx.x;  /* id of thread */
     int feature_id = threadIdx.y;                        /* id of feature */
     
+	// Usage of feature_id replaces the loop
     if(point_id < npoints && feature_id < nfeatures){
         output[point_id + npoints*feature_id] = input[point_id*nfeatures + feature_id];
     }

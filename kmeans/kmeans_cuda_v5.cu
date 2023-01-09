@@ -57,6 +57,9 @@ void allocateMemory(int npoints, int nfeatures, int nclusters, float **features)
 	num_blocks = num_blocks_perdim*num_blocks_perdim;
 
 	/* allocate memory for memory_new[] and initialize to -1 (host) */
+
+	// Experiment: Unified Memory
+	// We utilize UM instead of host allocation
 	cudaMallocManaged( &membership_d,npoints*sizeof(int));
 	for(int i=0;i<npoints;i++) {
 		membership_d[i] = -1;
@@ -153,6 +156,7 @@ kmeansCuda(float  **feature,				/* in: [npoints][nfeatures] */
 	cudaSetDevice(1);
 
 	/* copy membership (host to device) */
+	// Optimized, this copy is no longer needed due to UM
 	//cudaMemcpy(membership_d, membership_new, npoints*sizeof(int), cudaMemcpyHostToDevice);
 
 	/* copy clusters (host to device) */
@@ -192,8 +196,10 @@ kmeansCuda(float  **feature,				/* in: [npoints][nfeatures] */
     dim3  grid( num_blocks_perdim, num_blocks_perdim );
     dim3  threads( num_threads_perdim*num_threads_perdim );
     
-	cudaMemAdvise(membership_d, npoints*sizeof(int),cudaMemAdviseSetPreferredLocation, -1);
-    cudaMemPrefetchAsync(membership_d, npoints*sizeof(int), -1);
+	// Optimized, we tell cuda that we prefer the memory to reside host side
+	// This reduces the overall page faults
+	cudaMemAdvise(membership_d, npoints*sizeof(int),cudaMemAdviseSetPreferredLocation, cudaCpuDeviceId);
+    cudaMemPrefetchAsync(membership_d, npoints*sizeof(int), cudaCpuDeviceId);
 	/* execute the kernel */
     kmeansPoint<<< grid, threads >>>( feature_d,
                                       nfeatures,

@@ -63,6 +63,7 @@ dkms.conf
 *.cubin
 *.fatbin
 
-cuda/kmeans/kmeans
+kmeans/kmeans
+data/inputGenerator/*.txt
 
 # End of https://www.toptal.com/developers/gitignore/api/c,cuda

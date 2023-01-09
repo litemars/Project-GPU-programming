@@ -11,7 +11,6 @@
 #define THREADS_PER_DIM 16
 #define BLOCKS_PER_DIM 16
 #define THREADS_PER_BLOCK THREADS_PER_DIM*THREADS_PER_DIM
-#define STREAM_COUNT 4
 
 #include "kmeans_cuda_kernel.cu"
 
@@ -28,11 +27,11 @@ int setup(int argc, char** argv);									/* function prototype */
 // GLOBAL!!!!!
 unsigned int num_threads_perdim = THREADS_PER_DIM;					/* sqrt(256) -- see references for this choice */
 unsigned int num_blocks_perdim = BLOCKS_PER_DIM;					/* temporary */
-unsigned int num_threads = num_threads_perdim*num_threads_perdim;	/* number of threads */
+unsigned int num_threads = 27;	/* number of threads */
 unsigned int num_blocks = num_blocks_perdim*num_blocks_perdim;		/* number of blocks */
 
 /* _d denotes it resides on the device */
-//int    *membership_new;												/* newly assignment membership */
+int    *membership_new;												/* newly assignment membership */
 float  *feature_d;													/* inverted data array */
 float  *feature_flipped_d;											/* original (not inverted) data array */
 int    *membership_d;												/* membership on the device */
@@ -58,33 +57,41 @@ void allocateMemory(int npoints, int nfeatures, int nclusters, float **features)
 	num_blocks = num_blocks_perdim*num_blocks_perdim;
 
 	/* allocate memory for memory_new[] and initialize to -1 (host) */
-	cudaMallocManaged( &membership_d,npoints*sizeof(int));
+
+
+	// Experiment: Pinned memory optimizations 
+	// Profiling showed this variable is small enough to be pinned
+	// Pinning this improves copy performance
+	cudaMallocHost(&membership_new, npoints * sizeof(int));
+
+	// Optimized, instead of setting data on cpu side with a for loop
+	cudaMalloc((void**) &membership_d, npoints*sizeof(int));
+	// Removes a large for loop 
 	cudaMemset(membership_d, -1,  npoints * sizeof(int));
+	
 
 	/* allocate memory for block_new_centers[] (host) */
 	block_new_centers = (float *) malloc(nclusters*nfeatures*sizeof(float));
-
 	
 	/* allocate memory for feature_flipped_d[][], feature_d[][] (device) */
 	cudaMalloc((void**) &feature_flipped_d, npoints*nfeatures*sizeof(float));
+	cudaMemcpy(feature_flipped_d, features[0], npoints*nfeatures*sizeof(float), cudaMemcpyHostToDevice);
 	cudaMalloc((void**) &feature_d, npoints*nfeatures*sizeof(float));
-
-	size_t streamSize = npoints*nfeatures / STREAM_COUNT;
-	size_t streamBytes = streamSize * sizeof(float)
-
-	/* invert the data array (kernel execution) */	
-	for (size_t i = 0; i < STREAM_COUNT; i++)
-	{
-		cudaStreamCreate(&streams[i]);
-
-    	size_t offset = streamSize * i;
-		cudaMemcpyAsync(&feature_flipped_d[offset], features[offset], streamBytes, cudaMemcpyHostToDevice, streams[i]);
-			
-		/* invert the data array (kernel execution) */	
-		invert_mapping_v4<<<num_blocks,num_threads,0,streams[i]>>>(&feature_flipped_d[offset],feature_d,npoints / STREAM_COUNT,nfeatures);
-	}
-			
+		
+	// Experiment: Unroll for loop in the kernel
+	// To remove the loop in the kernel, we use the y dimention of threads in the block
+	// inspect invert_mapping_v4 kernel for details
+	dim3 grid(num_blocks);
+	dim3 block(num_threads,nfeatures);
+		
+	/* invert the data array (kernel execution) */
+	invert_mapping_v4<<<grid,block>>>(feature_flipped_d,feature_d,npoints,nfeatures);
+		
+		
 	/* allocate memory for membership_d[] and clusters_d[][] (device) */
+
+	// Optimized, no longer needed
+	//cudaMalloc((void**) &membership_d, npoints*sizeof(int));
 	cudaMalloc((void**) &clusters_d, nclusters*nfeatures*sizeof(float));
 
 	
@@ -111,6 +118,7 @@ void allocateMemory(int npoints, int nfeatures, int nclusters, float **features)
 extern "C"
 void deallocateMemory()
 {
+	cudaFreeHost(membership_new);
 	free(block_new_centers);
 	cudaFree(feature_d);
 	cudaFree(feature_flipped_d);
@@ -163,6 +171,7 @@ kmeansCuda(float  **feature,				/* in: [npoints][nfeatures] */
 
 	cudaSetDevice(1);
 
+	// Experiment: this copy is no longer needed due to the optimization in allocateMemory
 	/* copy membership (host to device) */
 	//cudaMemcpy(membership_d, membership_new, npoints*sizeof(int), cudaMemcpyHostToDevice);
 
@@ -203,8 +212,6 @@ kmeansCuda(float  **feature,				/* in: [npoints][nfeatures] */
     dim3  grid( num_blocks_perdim, num_blocks_perdim );
     dim3  threads( num_threads_perdim*num_threads_perdim );
     
-	cudaMemAdvise(membership_d, npoints*sizeof(int),cudaMemAdviseSetPreferredLocation, -1);
-    cudaMemPrefetchAsync(membership_d, npoints*sizeof(int), -1);
 	/* execute the kernel */
     kmeansPoint<<< grid, threads >>>( feature_d,
                                       nfeatures,
@@ -218,7 +225,7 @@ kmeansCuda(float  **feature,				/* in: [npoints][nfeatures] */
 	cudaThreadSynchronize();
 
 	/* copy back membership (device to host) */
-	//cudaMemcpy(membership_new, membership_d, npoints*sizeof(int), cudaMemcpyDeviceToHost);	
+	cudaMemcpy(membership_new, membership_d, npoints*sizeof(int), cudaMemcpyDeviceToHost);	
 
 #ifdef BLOCK_CENTER_REDUCE
     /*** Copy back arrays of per block sums ***/
@@ -247,14 +254,14 @@ kmeansCuda(float  **feature,				/* in: [npoints][nfeatures] */
 	delta = 0;
 	for (i = 0; i < npoints; i++)
 	{		
-		int cluster_id = membership_d[i];
+		int cluster_id = membership_new[i];
 		new_centers_len[cluster_id]++;
-		if (membership_d[i] != membership[i])
+		if (membership_new[i] != membership[i])
 		{
 #ifdef CPU_DELTA_REDUCE
 			delta++;
 #endif
-			membership[i] = membership_d[i];
+			membership[i] = membership_new[i];
 		}
 #ifdef CPU_CENTER_REDUCE
 		for (j = 0; j < nfeatures; j++)

@@ -27,7 +27,7 @@ int setup(int argc, char** argv);									/* function prototype */
 // GLOBAL!!!!!
 unsigned int num_threads_perdim = THREADS_PER_DIM;					/* sqrt(256) -- see references for this choice */
 unsigned int num_blocks_perdim = BLOCKS_PER_DIM;					/* temporary */
-unsigned int num_threads = num_threads_perdim*num_threads_perdim;	/* number of threads */
+unsigned int num_threads = 27;	/* number of threads */
 unsigned int num_blocks = num_blocks_perdim*num_blocks_perdim;		/* number of blocks */
 
 /* _d denotes it resides on the device */
@@ -57,14 +57,10 @@ void allocateMemory(int npoints, int nfeatures, int nclusters, float **features)
 	num_blocks = num_blocks_perdim*num_blocks_perdim;
 
 	/* allocate memory for memory_new[] and initialize to -1 (host) */
-	//membership_new = (int*) malloc(npoints * sizeof(int));
-
-	cudaMallocHost(&membership_new, npoints * sizeof(int));
-	cudaMalloc((void**) &membership_d, npoints*sizeof(int));
-	cudaMemset(membership_d, -1,  npoints * sizeof(int));
-	/*for(int i=0;i<npoints;i++) {
+	membership_new = (int*) malloc(npoints * sizeof(int));
+	for(int i=0;i<npoints;i++) {
 		membership_new[i] = -1;
-	}*/
+	}
 
 	/* allocate memory for block_new_centers[] (host) */
 	block_new_centers = (float *) malloc(nclusters*nfeatures*sizeof(float));
@@ -73,12 +69,18 @@ void allocateMemory(int npoints, int nfeatures, int nclusters, float **features)
 	cudaMalloc((void**) &feature_flipped_d, npoints*nfeatures*sizeof(float));
 	cudaMemcpy(feature_flipped_d, features[0], npoints*nfeatures*sizeof(float), cudaMemcpyHostToDevice);
 	cudaMalloc((void**) &feature_d, npoints*nfeatures*sizeof(float));
+
+	// Experiment: Unroll for loop in the kernel
+	// To remove the loop in the kernel, we use the y dimention of threads in the block
+	// inspect invert_mapping_v4 kernel for details
+	dim3 grid(num_blocks);
+	dim3 block(num_threads,nfeatures);
 		
-	/* invert the data array (kernel execution) */	
-	invert_mapping<<<num_blocks,num_threads>>>(feature_flipped_d,feature_d,npoints,nfeatures);
+	/* invert the data array (kernel execution) */
+	invert_mapping_v4<<<grid,block>>>(feature_flipped_d,feature_d,npoints,nfeatures);
 		
 	/* allocate memory for membership_d[] and clusters_d[][] (device) */
-	//cudaMalloc((void**) &membership_d, npoints*sizeof(int));
+	cudaMalloc((void**) &membership_d, npoints*sizeof(int));
 	cudaMalloc((void**) &clusters_d, nclusters*nfeatures*sizeof(float));
 
 	
@@ -105,7 +107,7 @@ void allocateMemory(int npoints, int nfeatures, int nclusters, float **features)
 extern "C"
 void deallocateMemory()
 {
-	cudaFreeHost(membership_new);
+	free(membership_new);
 	free(block_new_centers);
 	cudaFree(feature_d);
 	cudaFree(feature_flipped_d);
@@ -159,7 +161,7 @@ kmeansCuda(float  **feature,				/* in: [npoints][nfeatures] */
 	cudaSetDevice(1);
 
 	/* copy membership (host to device) */
-	//cudaMemcpy(membership_d, membership_new, npoints*sizeof(int), cudaMemcpyHostToDevice);
+	cudaMemcpy(membership_d, membership_new, npoints*sizeof(int), cudaMemcpyHostToDevice);
 
 	/* copy clusters (host to device) */
 	cudaMemcpy(clusters_d, clusters[0], nclusters*nfeatures*sizeof(float), cudaMemcpyHostToDevice);
