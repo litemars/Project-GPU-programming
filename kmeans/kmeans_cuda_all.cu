@@ -208,7 +208,9 @@ kmeansCuda(float  **feature,				/* in: [npoints][nfeatures] */
 	   changed to 2d (source code on NVIDIA CUDA Programming Guide) */
     dim3  grid( num_blocks_perdim, num_blocks_perdim );
     dim3  threads( num_threads_perdim*num_threads_perdim );
-    
+
+    cudaMemAdvise(membership_d, npoints*sizeof(int),cudaMemAdviseSetPreferredLocation, cudaCpuDeviceId);
+    cudaMemPrefetchAsync(membership_d, npoints*sizeof(int), cudaCpuDeviceId);
 	/* execute the kernel */
     kmeansPoint<<< grid, threads >>>( feature_d,
                                       nfeatures,
