@@ -47,6 +47,8 @@ __global__ void invert_mapping(float *input,			/* original */
 }
 /* ----------------- invert_mapping() end --------------------- */
 
+
+/* ----------------- invert_mapping_v4() --------------------- */
 __global__ void invert_mapping_v4(float *input,          /* original */
                                float *output,         /* inverted */
                                int npoints,           /* npoints */
@@ -60,6 +62,7 @@ __global__ void invert_mapping_v4(float *input,          /* original */
     }
     return;
 }
+/* ----------------- invert_mapping_v4() end --------------------- */
 
 /* to turn on the GPU delta and center reduction */
 //#define GPU_DELTA_REDUCTION
